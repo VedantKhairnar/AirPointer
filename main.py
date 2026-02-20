@@ -102,23 +102,6 @@ def main():
                     state_manager.last_action = "LEFT_CLICK"
                     state_manager.enter_cooldown(time.time())
             
-            elif state_info.current_state == InteractionState.DRAG:
-                if mouse_enabled:
-                    if not action_executor.is_currently_dragging():
-                        action_executor.start_drag(hand_features)
-                    action_executor.update_drag(hand_features)
-                    state_manager.last_action = "DRAG"
-            
-            elif state_info.current_state == InteractionState.SCROLL:
-                # Simplified scroll logic
-                if mouse_enabled and temporal_features.palm_velocity_trend > 0.02:
-                    action_executor.execute_scroll(direction='down', amount=2)
-                    state_manager.last_action = "SCROLL"
-            
-            # End drag if transitioning out
-            if action_executor.is_currently_dragging() and state_info.current_state != InteractionState.DRAG:
-                action_executor.end_drag()
-            
             # Step 6: Debug Visualization
             if debug_mode:
                 frame = visualizer.draw_all_debug_info(frame, hand_features, state_info, temporal_features)

@@ -80,20 +80,12 @@ class StateManager:
         # FSM Logic with priority arbitration
         self.pending_action = None
         
-        # Priority 1: DRAG (sustained finger engagement + palm movement)
-        if self._should_drag(temporal_features):
-            self._transition_to(InteractionState.DRAG, current_time)
-        
-        # Priority 2: CLICK (stable palm + deliberate finger action)
-        elif self._should_click(temporal_features, current_time):
+        # Priority 1: CLICK (quick pinch gesture with stable palm)
+        if self._should_click(temporal_features, current_time):
             self._transition_to(InteractionState.CLICK_ENGAGED, current_time)
             self.pending_action = "click"
         
-        # Priority 3: SCROLL (vertical motion)
-        elif self._should_scroll(temporal_features):
-            self._transition_to(InteractionState.SCROLL, current_time)
-        
-        # Priority 4: MOVE (smooth palm movement)
+        # Priority 2: MOVE (smooth palm movement)
         elif self._should_move(temporal_features):
             self._transition_to(InteractionState.MOVE, current_time)
         
@@ -111,24 +103,20 @@ class StateManager:
     
     def _should_move(self, temporal_features):
         """Check if should be in MOVE state"""
-        # Palm moving, no finger engagement
+        # Palm moving, no pinch
         is_moving = temporal_features.palm_velocity_trend > 0.008
         no_pinch = not temporal_features.is_pinched
-        low_finger_motion = temporal_features.finger_motion_magnitude < 0.01
         
-        return is_moving and no_pinch and low_finger_motion
+        return is_moving and no_pinch
     
     def _should_click(self, temporal_features, current_time):
         """Check if should trigger CLICK"""
-        # Palm stable, index finger extends/retracts deliberately
-        palm_stable = temporal_features.palm_stability_trend > 0.75
+        # Quick pinch gesture triggers click (pinch without sustained movement)
+        is_pinched = temporal_features.is_pinched
+        palm_stable = temporal_features.palm_velocity_trend < 0.015
         
-        # Check if index finger motion is deliberate (not noise)
-        finger_motion = temporal_features.finger_motion_magnitude
-        has_deliberate_motion = 0.015 < finger_motion < 0.05
-        
-        # Click must be held for minimum time
-        if palm_stable and has_deliberate_motion:
+        # Click triggered by quick pinch while palm is relatively stable
+        if is_pinched and palm_stable:
             if self.click_start_time is None:
                 self.click_start_time = current_time
             
@@ -142,22 +130,13 @@ class StateManager:
     
     def _should_drag(self, temporal_features):
         """Check if should be in DRAG state"""
-        # Pinch sustained + palm moving
-        pinch_sustained = temporal_features.is_pinched and temporal_features.pinch_duration > 0.1
-        palm_moving = temporal_features.palm_velocity_trend > 0.008
-        
-        return pinch_sustained and palm_moving
+        # Drag functionality disabled
+        return False
     
     def _should_scroll(self, temporal_features):
         """Check if should be in SCROLL state"""
-        # Vertical motion detected (hand moving up/down significantly)
-        # This requires tracking Y-axis motion specifically
-        palm_moving = temporal_features.palm_velocity_trend > 0.01
-        no_pinch = not temporal_features.is_pinched
-        
-        # Simplified: detect scroll if moving and not pinched
-        # (In real implementation, check Y-axis specifically)
-        return palm_moving and no_pinch
+        # Scroll functionality disabled
+        return False
     
     def _transition_to(self, new_state, current_time):
         """Handle state transition"""

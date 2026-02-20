@@ -142,23 +142,6 @@ class AirPointerSystem:
                 self.action_executor.execute_click(button='left')
                 self.state_manager.last_action = "LEFT_CLICK"
                 self.state_manager.enter_cooldown(time.time())
-        
-        elif state_info.current_state == InteractionState.DRAG:
-            if self.mouse_enabled:
-                if not self.action_executor.is_currently_dragging():
-                    self.action_executor.start_drag(hand_features)
-                self.action_executor.update_drag(hand_features)
-                self.state_manager.last_action = "DRAG"
-        
-        elif state_info.current_state == InteractionState.SCROLL:
-            if self.mouse_enabled and temporal_features.palm_velocity_trend > 0.02:
-                self.action_executor.execute_scroll(direction='down', amount=2)
-                self.state_manager.last_action = "SCROLL"
-        
-        # End drag if transitioning out
-        if self.action_executor.is_currently_dragging() and \
-           state_info.current_state != InteractionState.DRAG:
-            self.action_executor.end_drag()
     
     def _add_debug_overlays(self, frame, hand_features, state_info, temporal_features):
         """Add all debug information to frame"""
