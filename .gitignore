@@ -42,3 +42,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 hand_landmarker.task.1
+
+# Temporary folder for unnecessary files
+/temp/

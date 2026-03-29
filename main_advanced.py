@@ -46,7 +46,8 @@ class AirPointerSystem:
             screen_width=config.SCREEN_WIDTH,
             screen_height=config.SCREEN_HEIGHT,
             frame_width=config.CAMERA_WIDTH,
-            frame_height=config.CAMERA_HEIGHT
+            frame_height=config.CAMERA_HEIGHT,
+            sensitivity=config.CURSOR_SENSITIVITY
         )
         self.visualizer = DebugVisualizer(
             frame_width=config.CAMERA_WIDTH,
@@ -86,7 +87,8 @@ class AirPointerSystem:
                 landmarks, confidence = self.detector.detect(frame)
                 
                 if landmarks is None:
-                    # No hand detected
+                    # No hand detected - reset tracking so cursor stays put on next detection
+                    self.action_executor.reset_hand_tracking()
                     if self.debug_mode:
                         cv2.putText(frame, "No hand detected", (50, 100),
                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

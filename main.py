@@ -32,7 +32,8 @@ def main():
     temporal_analyzer = TemporalAnalyzer(window_size=15, fps=30)
     state_manager = StateManager()
     action_executor = ActionExecutor(screen_width=1920, screen_height=1080, 
-                                    frame_width=1280, frame_height=720)
+                                    frame_width=1280, frame_height=720,
+                                    sensitivity=2.5)
     visualizer = DebugVisualizer(frame_width=1280, frame_height=720)
     
     try:
@@ -58,7 +59,8 @@ def main():
             landmarks, confidence = detector.detect(frame)
             
             if landmarks is None:
-                # No hand detected
+                # No hand detected - reset tracking so cursor stays put on next detection
+                action_executor.reset_hand_tracking()
                 if debug_mode:
                     cv2.putText(frame, "No hand detected", (50, 100),
                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

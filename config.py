@@ -37,6 +37,7 @@ COOLDOWN_TIME = 0.2  # 200 ms cooldown after discrete action
 DRAG_MIN_TIME = 0.1  # 100 ms minimum drag duration
 
 # Action execution smoothing
+CURSOR_SENSITIVITY = 2.5  # Amplification factor: 1.0 = normal, 2.0 = 2x sensitivity, 3.0 = 3x sensitivity
 CURSOR_SMOOTHING_FACTOR = 0.6  # 0 = no smoothing, 1 = full smoothing
 MOUSE_PAUSE = 0.01  # PyAutoGUI pause between commands (in seconds)
 
