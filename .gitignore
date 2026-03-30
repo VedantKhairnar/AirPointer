@@ -45,3 +45,6 @@ hand_landmarker.task.1
 
 # Temporary folder for unnecessary files
 /temp/
+
+# Ignore the prompt file
+prompt.md
