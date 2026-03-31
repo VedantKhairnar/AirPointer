@@ -89,7 +89,7 @@ class AirPointerSystem:
             print()
             
             # Initialize models
-            models, device = initialize_models()
+            models, device = initialize_models("config/models.json")
 
             # Start webcam feed
             cap = cv2.VideoCapture(0)
@@ -143,6 +143,12 @@ class AirPointerSystem:
                     frame = self._add_debug_overlays(
                         frame, hand_features, state_info, temporal_features
                     )
+                
+                # Pass `hand_features` to `process_frame`
+                # Ensure `hand_features` is initialized before passing to `process_frame`
+                if landmarks is not None:
+                    hand_features = self.feature_extractor.extract_features(landmarks, current_timestamp)
+                    frame = process_frame(frame, models, device, hand_features)
                 
                 self._display_frame(frame)
                 

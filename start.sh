@@ -33,10 +33,10 @@ echo "  ✓ Dependencies installed"
 echo ""
 
 # Download model if missing
-if [ ! -f "hand_landmarker.task" ]; then
+if [ ! -f "models/hand_landmarker.task" ]; then
     echo "[4/5] Downloading MediaPipe hand landmark model (7.5 MB)..."
-    curl -L https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task -o hand_landmarker.task
-    if [ -f "hand_landmarker.task" ] && [ $(stat -f%z "hand_landmarker.task" 2>/dev/null || stat -c%s "hand_landmarker.task" 2>/dev/null) -gt 1000000 ]; then
+    curl -L https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task -o models/hand_landmarker.task
+    if [ -f "models/hand_landmarker.task" ] && [ $(stat -f%z "models/hand_landmarker.task" 2>/dev/null || stat -c%s "models/hand_landmarker.task" 2>/dev/null) -gt 1000000 ]; then
         echo "  ✓ Model downloaded successfully"
     else
         echo "  ✗ Model download failed. Please download manually from:"

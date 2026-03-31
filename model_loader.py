@@ -1,24 +1,11 @@
 import os
 import torch
 import gdown
+import json
 from torchvision.models import mobilenet_v3_small
 from torchvision.models.detection.ssd import SSD
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 import torch.nn as nn
-
-# --- CONFIGURATION ---
-CONFIG = {
-    'stage_one': {
-        'file_id': '11ELybE7ZdW0foxAMmkTS99cuQ3Vnr4ZN',
-        'weights_path': 'stage1_finetuned_weights.pth',
-        'model_fn': 'build_stage_one_detection_model'
-    },
-    'stage_two': {
-        'file_id': '1OO8Q_rk1iJy3c_9_4eQwZwkRbmRl0Yq-',
-        'weights_path': 'best_stage_two_model.pth',
-        'model_fn': 'AirPointerKeypointNet'
-    }
-}
 
 # --- UTILITY FUNCTIONS ---
 def download_weights(file_id, output_path):
@@ -63,18 +50,53 @@ class AirPointerKeypointNet(nn.Module):
         return self.sigmoid(heatmaps)
 
 # --- MODEL LOADER ---
-def initialize_models():
+def initialize_models(config_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     models = {}
 
-    for stage, config in CONFIG.items():
+    # Load configuration from JSON
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    for stage, stage_config in config.items():
         print(f"Initializing {stage} model...")
-        model_fn = globals()[config['model_fn']]
+        model_fn = globals()[stage_config['model_fn']]
         model = model_fn()
-        download_weights(config['file_id'], config['weights_path'])
-        load_model_weights(model, config['weights_path'], device)
+        
+        # Only download and load weights if they exist in config (not for mediapipe)
+        if 'file_id' in stage_config and 'weights_path' in stage_config:
+            download_weights(stage_config['file_id'], stage_config['weights_path'])
+            load_model_weights(model, stage_config['weights_path'], device)
+        
+        # Always set to eval mode to avoid training mode assertions
         model.to(device).eval()
         models[stage] = model
 
     print("All models initialized successfully!")
     return models, device
+
+# --- MODEL MANAGER ---
+class ModelManager:
+    def __init__(self, config_path):
+        self.config_path = config_path
+        self.models = {}
+        self.current_model = None
+        self.load_config()
+
+    def load_config(self):
+        with open(self.config_path, "r") as f:
+            self.models = json.load(f)  # Directly load the existing JS-style config
+
+    def switch_model(self, stage):
+        if stage not in self.models:
+            raise ValueError(f"Stage '{stage}' not found in configuration.")
+
+        model_config = self.models[stage]
+        model_fn = globals()[model_config['model_fn']]
+        model = model_fn()
+        self.current_model = model
+        print(f"Switched to model: {stage}")
+
+# Example usage
+model_manager = ModelManager("config/models.json")
+model_manager.switch_model("stage_one")

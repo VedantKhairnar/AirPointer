@@ -1,21 +1,16 @@
 {
-  "models": [
-    {
-      "name": "Mediapipe Hand Detector",
-      "type": "mediapipe",
-      "description": "Uses Mediapipe's built-in hand detection model."
-    },
-    {
-      "name": "Local Stage One Model",
-      "type": "local",
-      "path": "models/stage1_finetuned_weights.pth",
-      "description": "Custom stage one model for hand detection."
-    },
-    {
-      "name": "Local Stage Two Model",
-      "type": "local",
-      "path": "models/best_stage_two_model.pth",
-      "description": "Custom stage two model for gesture recognition."
-    }
-  ]
+  "stage_one": {
+    "name": "Local Stage One Model",
+    "type": "local",
+    "path": "models/stage1_finetuned_weights.pth",
+    "model_fn": "build_stage_one_detection_model",
+    "description": "Custom stage one model for hand detection."
+  },
+  "stage_two": {
+    "name": "Local Stage Two Model",
+    "type": "local",
+    "path": "models/best_stage_two_model.pth",
+    "model_fn": "AirPointerKeypointNet",
+    "description": "Custom stage two model for gesture recognition."
+  }
 }

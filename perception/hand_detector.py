@@ -18,7 +18,7 @@ from mediapipe.tasks.python import vision
 
 
 class HandDetector:
-    def __init__(self, max_num_hands=1, model_path="hand_landmarker.task"):
+    def __init__(self, max_num_hands=1, model_path="models/hand_landmarker.task"):
         """
         Initialize MediaPipe Tasks HandLandmarker.
         Args:

@@ -12,7 +12,7 @@ CAMERA_FPS = 30
 # MediaPipe Tasks API settings
 # Note: MediaPipe now uses the Tasks API with hand_landmarker.task model
 MEDIAPIPE_MAX_HANDS = 1  # Maximum number of hands to detect
-MEDIAPIPE_MODEL_PATH = "hand_landmarker.task"  # Path to model file
+MEDIAPIPE_MODEL_PATH = "models/hand_landmarker.task"  # Updated path to model file
 
 # Screen mapping
 SCREEN_WIDTH = 1920

@@ -3,18 +3,63 @@ import time
 import torch
 import numpy as np
 
-def process_frame(frame_bgr, models, device):
+class CursorController:
+    def __init__(self):
+        self.previous_position = None
+        self.smoothing_factor = 0.8  # Adjust for more or less smoothing
+
+    def smooth_cursor(self, current_position):
+        if self.previous_position is None:
+            self.previous_position = current_position
+            return current_position
+
+        smoothed_position = (
+            self.smoothing_factor * np.array(self.previous_position)
+            + (1 - self.smoothing_factor) * np.array(current_position)
+        )
+        self.previous_position = smoothed_position.tolist()
+        return smoothed_position.tolist()
+
+class GestureController:
+    def __init__(self):
+        self.click_threshold = 0.2  # Adjust as needed
+
+    def is_pinch_click(self, distance):
+        # Simplified logic: Check if distance is below the threshold
+        return distance < self.click_threshold
+
+class DragController:
+    def __init__(self):
+        self.is_dragging = False
+
+    def toggle_drag(self, pinch_distance):
+        # Start drag if pinch is detected and not already dragging
+        if pinch_distance < 0.2 and not self.is_dragging:
+            self.is_dragging = True
+            start_drag()  # Replace with actual function
+
+        # Stop drag if pinch is released
+        elif pinch_distance >= 0.2 and self.is_dragging:
+            self.is_dragging = False
+            stop_drag()  # Replace with actual function
+
+def process_frame(frame_bgr, models, device, hand_features):
     """
-    Process a single frame using the models.
+    Process a single frame using the models and hand features.
 
     Args:
         frame_bgr (numpy.ndarray): Input frame in BGR format.
         models (dict): Dictionary containing the initialized models.
         device (torch.device): Device to run the models on.
+        hand_features: Object containing hand detection data.
 
     Returns:
         numpy.ndarray: Processed frame with annotations.
     """
+    # Validate `hand_features` before using it
+    if hand_features is None:
+        raise ValueError("hand_features cannot be None. Ensure it is properly initialized.")
+
     start_time = time.time()
     h, w = frame_bgr.shape[:2]
 
@@ -83,3 +128,22 @@ def process_frame(frame_bgr, models, device):
     ai_time_ms = (time.time() - start_time) * 1000
     cv2.putText(frame_bgr, f"AI Time: {ai_time_ms:.1f} ms", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     return frame_bgr
+
+def get_hand_position(hand_features):
+    """
+    Extract the hand position (x, y) from the hand features.
+
+    Args:
+        hand_features: Object containing hand detection data.
+
+    Returns:
+        tuple: (x, y) coordinates of the hand position.
+    """
+    return hand_features.palm_x, hand_features.palm_y
+
+    # Check if pinch-to-click is triggered
+    if gesture_controller.is_pinch_click(pinch_distance):
+        perform_click()  # Replace with actual function
+
+    # Toggle drag functionality
+    drag_controller.toggle_drag(pinch_distance)

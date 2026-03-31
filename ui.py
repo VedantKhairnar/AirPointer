@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import Label, Button, ttk, Text
 from PIL import Image, ImageTk
 import cv2
-from model_loader import initialize_models
+from model_loader import initialize_models, ModelManager, load_config_from_json
 from inference_pipeline import process_frame
 import time
 import json
@@ -11,6 +11,10 @@ class AirPointerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("AirPointer Application")
+
+        # Load models from JSON
+        self.config_path = "config/models.json"
+        self.models_config = load_config_from_json(self.config_path)
 
         # Initialize models
         self.models, self.device = initialize_models()
@@ -36,6 +40,8 @@ class AirPointerApp:
         self.model_var = tk.StringVar()
         self.model_dropdown = ttk.Combobox(root, textvariable=self.model_var)
         self.model_dropdown.pack()
+        self.load_models_into_dropdown()
+        self.model_dropdown.bind("<<ComboboxSelected>>", self.on_model_change)
 
         # Metrics display
         self.metrics_label = Label(root, text="Metrics: AI Time: 0 ms, FPS: 0", fg="blue")
@@ -44,6 +50,39 @@ class AirPointerApp:
         # Text area for logs
         self.log_area = Text(root, height=10, width=50)
         self.log_area.pack()
+
+        # Camera preview
+        self.camera_label = Label(root, text="Camera Preview")
+        self.camera_label.pack()
+
+        # Buttons for toggling modes
+        self.cursor_mode_button = Button(root, text="Cursor Mode", command=self.enable_cursor_mode)
+        self.cursor_mode_button.pack()
+
+        self.drag_mode_button = Button(root, text="Drag Mode", command=self.enable_drag_mode)
+        self.drag_mode_button.pack()
+
+        # Status bar
+        self.status_label = Label(root, text="Status: Cursor Mode")
+        self.status_label.pack()
+
+        # Default settings
+        self.log_message("Application started.")
+        self.on_model_change()  # Load default model
+
+    def load_models_into_dropdown(self):
+        self.model_dropdown["values"] = list(self.models_config.keys())
+        self.model_dropdown.current(0)  # Select the first model by default
+
+    def on_model_change(self, event=None):
+        selected_model = self.model_var.get()
+        self.log_message(f"Switched to model: {selected_model}")
+
+    def log_message(self, message):
+        self.log_area.insert(tk.END, message + "\n")
+        self.log_area.see(tk.END)
+        with open("logs/application.log", "a") as log_file:
+            log_file.write(message + "\n")
 
     def start_webcam(self):
         self.cap = cv2.VideoCapture(0)
@@ -97,18 +136,6 @@ class AirPointerApp:
 
         # Schedule the next frame update
         self.root.after(10, self.update_frame)
-
-    def load_models(self):
-        with open("config/models.json", "r") as f:
-            config = json.load(f)
-            models = config.get("models", [])
-            self.model_dropdown["values"] = [model["name"] for model in models]
-
-    def log_message(self, message):
-        self.log_area.insert(tk.END, message + "\n")
-        self.log_area.see(tk.END)
-        with open("logs/application.log", "a") as log_file:
-            log_file.write(message + "\n")
 
 if __name__ == "__main__":
     root = tk.Tk()
