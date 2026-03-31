@@ -7,6 +7,19 @@ import cv2
 import time
 import sys
 import config
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("application.log"),
+        logging.StreamHandler()
+    ]
+)
+
+logging.info("Application started.")
 
 from perception.camera_handler import CameraHandler
 from perception.hand_detector import HandDetector
@@ -15,6 +28,8 @@ from temporal_analysis.analyzer import TemporalAnalyzer
 from state_management.state_machine import StateManager, InteractionState
 from action_execution.executor import ActionExecutor
 from debug.visualizer import DebugVisualizer
+from model_loader import initialize_models
+from inference_pipeline import process_frame
 
 
 class AirPointerSystem:
@@ -73,6 +88,17 @@ class AirPointerSystem:
             print("  m - Toggle mouse control")
             print()
             
+            # Initialize models
+            models, device = initialize_models()
+
+            # Start webcam feed
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("Error: Could not open webcam.")
+                exit()
+
+            print("Webcam feed started. Press 'q' to quit.")
+
             while True:
                 # Capture frame
                 success, frame = self.camera.get_frame()
