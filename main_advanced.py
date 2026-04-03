@@ -6,8 +6,10 @@ Uses config.py for easy tuning without modifying main code
 import cv2
 import time
 import sys
+import argparse
 import config
 import logging
+from types import SimpleNamespace
 
 # Configure logging
 logging.basicConfig(
@@ -33,10 +35,14 @@ from inference_pipeline import process_frame
 
 
 class AirPointerSystem:
-    def __init__(self):
+    def __init__(self, default_model="stage_one"):
         """Initialize all components of AirPointer"""
         print("[AirPointer] Initializing system...")
-        
+        logging.info(f"Initializing AirPointerSystem with default_model={default_model}")
+
+        # Store model selection
+        self.default_model = default_model
+
         # Initialize perception
         self.camera = CameraHandler(
             camera_id=config.CAMERA_ID,
@@ -44,10 +50,14 @@ class AirPointerSystem:
             height=config.CAMERA_HEIGHT,
             fps=config.CAMERA_FPS
         )
-        self.detector = HandDetector(
-            max_num_hands=config.MEDIAPIPE_MAX_HANDS
-        )
-        
+        # Only initialize HandDetector if using mediapipe
+        self.detector = None
+        if self.default_model == "mediapipe":
+            self.detector = HandDetector(
+                max_num_hands=config.MEDIAPIPE_MAX_HANDS
+            )
+            logging.info("HandDetector (MediaPipe) initialized.")
+
         # Initialize processing pipeline
         self.feature_extractor = FeatureExtractor()
         self.temporal_analyzer = TemporalAnalyzer(
@@ -55,7 +65,7 @@ class AirPointerSystem:
             fps=config.TEMPORAL_FPS
         )
         self.state_manager = StateManager()
-        
+
         # Initialize action execution and visualization
         self.action_executor = ActionExecutor(
             screen_width=config.SCREEN_WIDTH,
@@ -68,7 +78,7 @@ class AirPointerSystem:
             frame_width=config.CAMERA_WIDTH,
             frame_height=config.CAMERA_HEIGHT
         )
-        
+
         # State variables
         self.debug_mode = config.DEBUG_MODE_DEFAULT
         self.mouse_enabled = config.MOUSE_ENABLED_DEFAULT
@@ -88,14 +98,15 @@ class AirPointerSystem:
             print("  m - Toggle mouse control")
             print()
             
+
             # Initialize models
             models, device = initialize_models("config/models.json")
-
-            # Start webcam feed
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
-                print("Error: Could not open webcam.")
-                exit()
+            if self.default_model not in models:
+                logging.error(f"Default model '{self.default_model}' not found. Using 'stage_one'.")
+                print(f"[Error] Default model '{self.default_model}' not found. Using 'stage_one'.")
+                self.default_model = "stage_one"
+            print(f"Switched to model: {self.default_model}")
+            logging.info(f"Switched to model: {self.default_model}")
 
             print("Webcam feed started. Press 'q' to quit.")
 
@@ -103,55 +114,66 @@ class AirPointerSystem:
                 # Capture frame
                 success, frame = self.camera.get_frame()
                 if not success:
+                    logging.error("Failed to capture frame")
                     print("[Error] Failed to capture frame")
                     break
-                
+
                 self.frame_count += 1
                 current_timestamp = time.time() - self.start_time
-                
-                # Detect hand
-                landmarks, confidence = self.detector.detect(frame)
-                
-                if landmarks is None:
-                    # No hand detected - reset tracking so cursor stays put on next detection
-                    self.action_executor.reset_hand_tracking()
-                    if self.debug_mode:
-                        cv2.putText(frame, "No hand detected", (50, 100),
-                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                        self._display_frame(frame)
-                    
-                    if not self._handle_input():
-                        break
-                    continue
-                
-                # Draw landmarks
-                if self.debug_mode and config.SHOW_LANDMARKS:
-                    frame = self.detector.draw_landmarks(frame, landmarks)
-                
-                # Pipeline: Features → Temporal → State → Action
-                hand_features = self.feature_extractor.extract_features(
-                    landmarks, current_timestamp
-                )
-                temporal_features = self.temporal_analyzer.update(hand_features)
-                state_info = self.state_manager.update(temporal_features)
-                
-                # Execute actions
-                self._execute_actions(state_info, hand_features, temporal_features)
-                
-                # Visualization
-                if self.debug_mode:
-                    frame = self._add_debug_overlays(
-                        frame, hand_features, state_info, temporal_features
-                    )
-                
-                # Pass `hand_features` to `process_frame`
-                # Ensure `hand_features` is initialized before passing to `process_frame`
-                if landmarks is not None:
+
+                if self.default_model == "mediapipe":
+                    # Use MediaPipe for detection
+                    landmarks, confidence = self.detector.detect(frame)
+                    logging.info(f"[Mediapipe] Detection result: landmarks={'found' if landmarks is not None else 'none'}")
+                    if landmarks is None:
+                        self.action_executor.reset_hand_tracking()
+                        if self.debug_mode:
+                            cv2.putText(frame, "No hand detected", (50, 100),
+                                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                            self._display_frame(frame)
+                        if not self._handle_input():
+                            break
+                        continue
+                    # Draw landmarks
+                    if self.debug_mode and config.SHOW_LANDMARKS:
+                        frame = self.detector.draw_landmarks(frame, landmarks)
+                    # Feature extraction and pipeline
                     hand_features = self.feature_extractor.extract_features(landmarks, current_timestamp)
-                    frame = process_frame(frame, models, device, hand_features)
-                
-                self._display_frame(frame)
-                
+                    temporal_features = self.temporal_analyzer.update(hand_features)
+                    state_info = self.state_manager.update(temporal_features)
+                    self._execute_actions(state_info, hand_features, temporal_features)
+                    if self.debug_mode:
+                        frame = self._add_debug_overlays(frame, hand_features, state_info, temporal_features)
+                    self._display_frame(frame)
+                elif self.default_model == "custom1":
+                    # Use custom1 pipeline (stage_one + stage_two)
+                    try:
+                        logging.info(f"[Custom1 Pipeline] About to call process_frame. Model keys: {list(models['custom1'].keys())}, Device: {device}")
+                        frame, inference_meta = process_frame(
+                            frame,
+                            models["custom1"],
+                            device,
+                            hand_features=None,
+                            return_metadata=True,
+                            detection_threshold=getattr(config, "CUSTOM_STAGE_ONE_SCORE_THRESHOLD", 0.35)
+                        )
+                        if inference_meta["detected"] and inference_meta["cursor_point"] is not None:
+                            cursor_x, cursor_y = inference_meta["cursor_point"]
+                            hand_features = SimpleNamespace(
+                                palm_x=float(cursor_x) / float(config.CAMERA_WIDTH),
+                                palm_y=float(cursor_y) / float(config.CAMERA_HEIGHT)
+                            )
+                            if self.mouse_enabled:
+                                self.action_executor.execute_move(hand_features)
+                        else:
+                            self.action_executor.reset_hand_tracking()
+                            logging.info(f"[Custom1 Pipeline] No hand detected. score={inference_meta['score']}")
+                        logging.info("[Custom1 Pipeline] process_frame executed.")
+                    except Exception as e:
+                        logging.error(f"[Custom1 Pipeline] process_frame error: {e}")
+                        print(f"[Error] process_frame: {e}")
+                    self._display_frame(frame)
+
                 # Input handling
                 if not self._handle_input():
                     break
@@ -226,7 +248,10 @@ class AirPointerSystem:
 
 
 def main():
-    system = AirPointerSystem()
+    parser = argparse.ArgumentParser(description="AirPointer Advanced")
+    parser.add_argument('--model', type=str, default="custom1", choices=["custom1", "mediapipe"], help="Default model to use: custom1 or mediapipe")
+    args = parser.parse_args()
+    system = AirPointerSystem(default_model=args.model)
     system.run()
 
 

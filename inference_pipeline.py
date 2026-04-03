@@ -43,7 +43,7 @@ class DragController:
             self.is_dragging = False
             stop_drag()  # Replace with actual function
 
-def process_frame(frame_bgr, models, device, hand_features):
+def process_frame(frame_bgr, models, device, hand_features=None, return_metadata=False, detection_threshold=0.5):
     """
     Process a single frame using the models and hand features.
 
@@ -54,25 +54,37 @@ def process_frame(frame_bgr, models, device, hand_features):
         hand_features: Object containing hand detection data.
 
     Returns:
-        numpy.ndarray: Processed frame with annotations.
+        numpy.ndarray or tuple: Processed frame. If return_metadata=True,
+        returns (frame, metadata) where metadata includes detection info.
     """
-    # Validate `hand_features` before using it
-    if hand_features is None:
-        raise ValueError("hand_features cannot be None. Ensure it is properly initialized.")
-
     start_time = time.time()
     h, w = frame_bgr.shape[:2]
+    metadata = {
+        "detected": False,
+        "score": None,
+        "cursor_point": None,
+        "keypoints": []
+    }
 
     # STAGE 1: DETECT THE HAND
     img_resized = cv2.resize(frame_bgr, (320, 320))
     img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
     img_tensor = torch.tensor(img_rgb, dtype=torch.float32).permute(2, 0, 1) / 255.0
     img_tensor = img_tensor.unsqueeze(0).to(device)
-
+    
     with torch.no_grad():
         stage_one_preds = models['stage_one'](img_tensor)[0]
 
-    if len(stage_one_preds['scores']) == 0 or stage_one_preds['scores'][0] < 0.5:
+    if len(stage_one_preds['scores']) == 0:
+        if return_metadata:
+            return frame_bgr, metadata
+        return frame_bgr
+
+    top_score = float(stage_one_preds['scores'][0].item())
+    metadata["score"] = top_score
+    if top_score < detection_threshold:
+        if return_metadata:
+            return frame_bgr, metadata
         return frame_bgr
 
     box = stage_one_preds['boxes'][0].cpu().numpy()
@@ -125,8 +137,15 @@ def process_frame(frame_bgr, models, device, hand_features):
             color, radius = (0, 255, 0), 5
         cv2.circle(frame_bgr, (actual_x, actual_y), radius, color, -1)
 
+    metadata["detected"] = True
+    metadata["keypoints"] = keypoints
+    if len(keypoints) > 9:
+        metadata["cursor_point"] = keypoints[9]
+
     ai_time_ms = (time.time() - start_time) * 1000
     cv2.putText(frame_bgr, f"AI Time: {ai_time_ms:.1f} ms", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+    if return_metadata:
+        return frame_bgr, metadata
     return frame_bgr
 
 def get_hand_position(hand_features):

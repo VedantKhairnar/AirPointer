@@ -52,3 +52,6 @@ SHOW_FINGER_STATES = True
 # Performance
 TARGET_FPS = 30
 ENABLE_FPS_COUNTER = True
+
+# Custom model thresholds
+CUSTOM_STAGE_ONE_SCORE_THRESHOLD = 0.12

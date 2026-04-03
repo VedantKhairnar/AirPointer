@@ -1,16 +1,21 @@
 {
-  "stage_one": {
-    "name": "Local Stage One Model",
-    "type": "local",
-    "path": "models/stage1_finetuned_weights.pth",
-    "model_fn": "build_stage_one_detection_model",
-    "description": "Custom stage one model for hand detection."
+  "custom1": {
+    "name": "Custom Model Pipeline",
+    "type": "custom",
+    "stage_one": {
+      "path": "models/stage_one_model.pth",
+      "model_fn": "build_stage_one_detection_model"
+    },
+    "stage_two": {
+      "path": "models/stage_two_model.pth",
+      "model_fn": "AirPointerKeypointNet"
+    },
+    "description": "Custom pipeline: detection and gesture recognition."
   },
-  "stage_two": {
-    "name": "Local Stage Two Model",
-    "type": "local",
-    "path": "models/best_stage_two_model.pth",
-    "model_fn": "AirPointerKeypointNet",
-    "description": "Custom stage two model for gesture recognition."
+  "mediapipe": {
+    "name": "Mediapipe Hand Landmarker",
+    "type": "mediapipe",
+    "model_fn": "mediapipe_stub_loader",
+    "description": "Mediapipe hand landmark detection (no weights needed)."
   }
 }
