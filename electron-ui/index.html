@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AirPointer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="backdrop backdrop-a"></div>
+  <div class="backdrop backdrop-b"></div>
+  <header class="topbar">
+    <div class="brand">AirPointer</div>
+    <div class="topbar-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusLabel">Idle</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="visual-panel">
+        <div class="preview-frame">
+          <div class="preview-badge">Live Runtime</div>
+          <canvas id="cameraFeed" class="camera-feed"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="card">
+        <div class="card-header">
+          <h2>Runtime Model</h2>
+          <span class="tag">dual mode</span>
+        </div>
+        <label class="field-label" for="modelSelect">Choose mode</label>
+        <select id="modelSelect" class="select">
+          <option value="custom1">custom1</option>
+          <option value="mediapipe" selected>mediapipe</option>
+        </select>
+        <p class="card-note">Switching model changes which Python pipeline is launched.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Runtime Toggles</h2>
+          <span class="tag">live</span>
+        </div>
+        <div class="toggle-row">
+          <button class="toggle-btn" id="debugBtn">Debug: On</button>
+          <button class="toggle-btn" id="mouseBtn">Mouse: Off</button>
+        </div>
+        <p class="card-note">These toggles update the running backend immediately.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Control</h2>
+          <span class="tag">session</span>
+        </div>
+        <div class="action-row control-row">
+          <button class="primary" id="startBtn">Start</button>
+          <button class="secondary" id="stopBtn">Stop</button>
+          <button class="tertiary" id="quitBtn">Quit</button>
+        </div>
+      </section>
+
+      <section class="card logs-card">
+        <div class="card-header">
+          <h2>Logs</h2>
+          <span class="tag">live</span>
+        </div>
+        <div id="logStream" class="log-stream"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+**/__pycache__/
+
+# Test cache
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Python tooling caches
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime logs
+application.log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
+
+# Temp and reference files
+/temp
+tmp/
+
+# Electron UI artifacts
+/electron-ui/node_modules/
+/electron-ui/dist/
+/electron-ui/out/
+/electron-ui/.vite/
+
+# Editor settings
+.vscode/
+.idea/

@@ -1,0 +1,17 @@
+{
+  "custom1": {
+    "type": "custom",
+    "stage_one": {
+      "path": "models/stage_one_model.pth",
+      "model_fn": "build_stage_one_detection_model"
+    },
+    "stage_two": {
+      "path": "models/stage_two_model.pth",
+      "model_fn": "AirPointerKeypointNet"
+    }
+  },
+  "mediapipe": {
+    "type": "mediapipe",
+    "model_fn": "mediapipe_stub_loader"
+  }
+}
