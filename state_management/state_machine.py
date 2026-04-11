@@ -35,6 +35,8 @@ class StateManager:
         self._drag_active = False
         self._move_start_threshold = 0.008
         self._move_stop_threshold = 0.0055
+        self._move_stop_threshold_snappy = 0.0062
+        self._click_approach_distance = config.PINCH_THRESHOLD * 1.33
 
     def update(self, temporal_features, timestamp: float) -> StateInfo:
         self.pending_action = "none"
@@ -103,8 +105,16 @@ class StateManager:
             return False
 
         velocity = temporal_features.palm_velocity_trend
+        thumb_index_distance = float(getattr(temporal_features, "thumb_index_distance", 1.0))
+
+        # Keep slower precision approach for click posture, tighten stop elsewhere.
+        if thumb_index_distance <= self._click_approach_distance:
+            effective_stop_threshold = self._move_stop_threshold
+        else:
+            effective_stop_threshold = self._move_stop_threshold_snappy
+
         if self._move_latched:
-            moving = velocity > self._move_stop_threshold
+            moving = velocity > effective_stop_threshold
         else:
             moving = velocity > self._move_start_threshold
 

@@ -7,6 +7,7 @@ def _temporal(pinched: bool, pinch_duration: float) -> TemporalFeatures:
         palm_velocity_trend=0.02,
         palm_acceleration_trend=0.0,
         palm_stability_trend=0.9,
+        thumb_index_distance=0.34,
         finger_motion_magnitude=0.0,
         finger_consistency=1.0,
         is_moving=True,
@@ -51,6 +52,32 @@ def test_move_hysteresis_prevents_premature_idle():
     very_slow.palm_velocity_trend = 0.001
     state3 = manager.update(very_slow, 1.2)
     assert state3.current_state == InteractionState.IDLE
+
+
+def test_adaptive_stop_threshold_preserves_click_approach_precision():
+    manager = StateManager()
+
+    start = _temporal(pinched=False, pinch_duration=0.0)
+    start.palm_velocity_trend = 0.010
+    manager.update(start, 1.0)
+
+    # Far from pinch posture -> snappier stop threshold should idle.
+    far = _temporal(pinched=False, pinch_duration=0.0)
+    far.thumb_index_distance = 0.9
+    far.palm_velocity_trend = 0.0060
+    far_state = manager.update(far, 1.1)
+    assert far_state.current_state == InteractionState.IDLE
+
+    # Near pinch posture -> keep original threshold so slow approach still moves.
+    restart = _temporal(pinched=False, pinch_duration=0.0)
+    restart.palm_velocity_trend = 0.010
+    manager.update(restart, 1.2)
+
+    near = _temporal(pinched=False, pinch_duration=0.0)
+    near.thumb_index_distance = 0.34
+    near.palm_velocity_trend = 0.0060
+    near_state = manager.update(near, 1.3)
+    assert near_state.current_state == InteractionState.MOVE
 
 
 def test_drag_start_update_end_flow():

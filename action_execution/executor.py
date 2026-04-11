@@ -15,8 +15,8 @@ class ActionExecutor:
         self.screen_height = config.SCREEN_HEIGHT
         self.sensitivity = config.CURSOR_SENSITIVITY
         self.base_smoothing = config.CURSOR_SMOOTHING_FACTOR
-        self.deadzone = 0.0035
-        self.max_step_px = 55.0
+        self.deadzone = 0.008  # Filters hand tremor during fingertip tracking
+        self.max_step_px = 120.0  # Allows faster cursor response to quick hand movements
         self._stop_motion_threshold = 0.0022
         self._tail_snap_threshold = 0.006
 
@@ -27,7 +27,9 @@ class ActionExecutor:
         self._dragging = False
 
     def execute_move(self, hand_features):
-        current = np.array([hand_features.palm_x, hand_features.palm_y], dtype=np.float32)
+        # Use index finger tip (landmark 8) instead of palm for more direct, responsive control.
+        index_tip = hand_features.landmarks[8, :2]  # x, y normalized [0, 1]
+        current = np.array([index_tip[0], index_tip[1]], dtype=np.float32)
         hand_motion = 0.0
         if self._last_hand_pos is not None:
             hand_motion = float(np.linalg.norm(current - self._last_hand_pos))
@@ -45,9 +47,11 @@ class ActionExecutor:
         raw_delta = current - self._filtered_hand_pos
         delta_norm = float(np.linalg.norm(raw_delta))
 
-        min_smoothing = float(np.clip(self.base_smoothing - 0.20, 0.35, 0.95))
-        max_smoothing = float(np.clip(self.base_smoothing + 0.10, min_smoothing, 0.985))
-        position_smoothing = float(np.clip(max_smoothing - delta_norm * 6.0, min_smoothing, max_smoothing))
+        # For fingertip tracking: reduce smoothing baseline since tip is naturally more responsive.
+        # Fingertip is noisier, so use tighter damping range to catch micro-movements.
+        min_smoothing = float(np.clip(self.base_smoothing - 0.25, 0.30, 0.95))
+        max_smoothing = float(np.clip(self.base_smoothing + 0.05, min_smoothing, 0.98))
+        position_smoothing = float(np.clip(max_smoothing - delta_norm * 8.0, min_smoothing, max_smoothing))
 
         self._filtered_hand_pos = (
             position_smoothing * self._filtered_hand_pos + (1.0 - position_smoothing) * current

@@ -11,6 +11,7 @@ class TemporalFeatures:
     palm_velocity_trend: float
     palm_acceleration_trend: float
     palm_stability_trend: float
+    thumb_index_distance: float
     finger_motion_magnitude: float
     finger_consistency: float
     is_moving: bool
@@ -84,6 +85,7 @@ class TemporalAnalyzer:
             palm_velocity_trend=velocity_trend,
             palm_acceleration_trend=acceleration_trend,
             palm_stability_trend=stability_trend,
+            thumb_index_distance=float(features.thumb_index_distance),
             finger_motion_magnitude=finger_motion,
             finger_consistency=finger_consistency,
             is_moving=is_moving,
