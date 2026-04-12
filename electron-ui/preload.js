@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('airpointer', {
   startBackend: (model) => ipcRenderer.invoke('backend:start', { model }),
+  restartBackend: (model) => ipcRenderer.invoke('backend:restart', { model }),
   stopBackend: () => ipcRenderer.invoke('backend:stop'),
   getStatus: () => ipcRenderer.invoke('backend:status'),
   quitApp: () => ipcRenderer.invoke('app:quit'),

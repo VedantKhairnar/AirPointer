@@ -168,6 +168,8 @@ class AirPointerSystem:
                     if key == ord("m"):
                         self.mouse_enabled = not self.mouse_enabled
 
+        except KeyboardInterrupt:
+            self.logger.info("Shutdown requested")
         except Exception as exc:
             self.logger.error("Uncaught exception: %s", exc)
             self.logger.error(traceback.format_exc())
@@ -228,11 +230,24 @@ class AirPointerSystem:
             self.device,
             return_metadata=True,
             detection_threshold=config.CUSTOM_STAGE_ONE_SCORE_THRESHOLD,
+            keypoint_peak_threshold=config.CUSTOM_STAGE_TWO_HEATMAP_PEAK_THRESHOLD,
         )
 
         detected = metadata.get("detected", False)
         keypoints = metadata.get("keypoints") or []
         score = metadata.get("score")
+        mean_peak_score = metadata.get("mean_peak_score")
+
+        # Custom ghost pattern observed in logs: moderate stage-one score with weak stage-two peaks.
+        if (
+            detected
+            and score is not None
+            and mean_peak_score is not None
+            and score < config.CUSTOM_GHOST_REJECT_STAGE_ONE_MAX
+            and mean_peak_score < config.CUSTOM_GHOST_REJECT_PEAK_MAX
+        ):
+            detected = False
+            keypoints = []
 
         if detected and len(keypoints) >= 21:
             self._missed_frames = 0
@@ -250,7 +265,11 @@ class AirPointerSystem:
 
             self._run_shared_pipeline(frame_out, self._smooth_landmarks(landmarks), timestamp)
         else:
-            self.logger.info("custom1 no-detection score=%s", score)
+            self.logger.info(
+                "custom1 no-detection score=%s mean_peak_score=%s",
+                score,
+                mean_peak_score,
+            )
             self._missed_frames += 1
             if self._missed_frames > self._max_missed_frames:
                 self._reset_tracking_pipeline()

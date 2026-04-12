@@ -21,6 +21,7 @@ def process_frame(
     device: torch.device,
     return_metadata: bool = False,
     detection_threshold: float = 0.5,
+    keypoint_peak_threshold: float = 0.2,
 ):
     start = time.time()
     frame = frame_bgr.copy()
@@ -44,6 +45,7 @@ def process_frame(
     detected = False
     keypoints: List[Tuple[int, int]] = []
     cursor_point = None
+    mean_peak_score = None
 
     if scores.numel() > 0:
         top_idx = int(torch.argmax(scores).item())
@@ -74,12 +76,14 @@ def process_frame(
 
                 crop_w = max(1, x2 - x1)
                 crop_h = max(1, y2 - y1)
+                peak_scores: List[float] = []
 
                 for channel in range(heatmaps.shape[0]):
                     hm = heatmaps[channel]
                     arg_idx = int(np.argmax(hm))
                     hm_h, hm_w = hm.shape
                     hm_y, hm_x = divmod(arg_idx, hm_w)
+                    peak_scores.append(float(hm[hm_y, hm_x]))
 
                     kp_x_224 = hm_x * 4
                     kp_y_224 = hm_y * 4
@@ -88,12 +92,22 @@ def process_frame(
                     kp_y = int(y1 + (kp_y_224 / 224.0) * crop_h)
 
                     keypoints.append((kp_x, kp_y))
-                    cv2.circle(frame, (kp_x, kp_y), 3, (0, 255, 0), -1)
 
-                if len(keypoints) > 9:
-                    cursor_point = keypoints[9]
+                if peak_scores:
+                    mean_peak_score = float(np.mean(peak_scores))
 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 200, 255), 2)
+                # Reject noisy stage-two outputs from background false positives.
+                if mean_peak_score is None or mean_peak_score < keypoint_peak_threshold:
+                    detected = False
+                    keypoints = []
+                else:
+                    for kp_x, kp_y in keypoints:
+                        cv2.circle(frame, (kp_x, kp_y), 3, (0, 255, 0), -1)
+
+                    if len(keypoints) > 9:
+                        cursor_point = keypoints[9]
+
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 200, 255), 2)
 
     elapsed_ms = (time.time() - start) * 1000.0
     cv2.putText(
@@ -112,6 +126,7 @@ def process_frame(
     metadata = {
         "detected": detected,
         "score": score,
+        "mean_peak_score": mean_peak_score,
         "cursor_point": cursor_point,
         "keypoints": keypoints,
     }

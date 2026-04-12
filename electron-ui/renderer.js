@@ -157,6 +157,7 @@ async function refreshStatus() {
   state.pid = backendState.pid;
   state.status = backendState.status;
   state.controlPort = backendState.controlPort || state.controlPort;
+  state.logFilePath = backendState.logFilePath || state.logFilePath;
   modelSelect.value = backendState.model;
   renderStatus();
   renderCameraFeed();
@@ -187,6 +188,9 @@ stopBtn.addEventListener('click', async () => {
 modelSelect.addEventListener('change', () => {
   state.model = modelSelect.value;
   renderStatus();
+  if (state.running) {
+    window.airpointer.restartBackend(state.model);
+  }
 });
 
 debugBtn.addEventListener('click', async () => {
@@ -215,6 +219,7 @@ window.airpointer.onEvent((event) => {
     state.pid = event.state.pid;
     state.status = event.state.status;
     state.controlPort = event.state.controlPort || state.controlPort;
+    state.logFilePath = event.state.logFilePath || state.logFilePath;
     modelSelect.value = event.state.model;
     renderStatus();
     renderCameraFeed();

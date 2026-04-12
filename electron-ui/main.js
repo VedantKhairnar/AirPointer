@@ -1,14 +1,17 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 let mainWindow = null;
 let backendProcess = null;
 let stdoutBuffer = '';
 let stderrBuffer = '';
+let pendingRestartModel = null;
 
 const projectRoot = path.resolve(__dirname, '..');
+const backendLogPath = process.env.AIRPOINTER_LOG_FILE || path.join(os.tmpdir(), `airpointer-backend-${process.pid}.log`);
 const pythonCandidates = [
   process.env.AIRPOINTER_PYTHON,
   path.join(projectRoot, '..', '.venv', 'bin', 'python'),
@@ -25,6 +28,7 @@ const backendState = {
   status: 'idle',
   startedAt: null,
   controlPort,
+  logFilePath: backendLogPath,
 };
 
 function sendEvent(event) {
@@ -40,6 +44,15 @@ function sendStatus() {
 function emitLog(text, stream = 'stdout') {
   const lines = String(text).split(/\r?\n/).filter(Boolean);
   for (const line of lines) {
+    try {
+      fs.appendFileSync(
+        backendLogPath,
+        `[${new Date().toISOString()}] [${stream}] ${line}${os.EOL}`,
+        { encoding: 'utf8' }
+      );
+    } catch {
+      // Best-effort logging only.
+    }
     sendEvent({ type: 'log', stream, message: line, time: new Date().toISOString() });
   }
 }
@@ -145,6 +158,16 @@ function startBackend(model) {
     backendState.status = code === 0 ? 'stopped' : 'error';
     backendState.controlPort = controlPort;
     sendStatus();
+
+    if (pendingRestartModel) {
+      const nextModel = pendingRestartModel;
+      pendingRestartModel = null;
+      setTimeout(() => {
+        if (!backendProcess) {
+          startBackend(nextModel);
+        }
+      }, 500);
+    }
   });
 
   backendProcess.on('error', (error) => {
@@ -160,7 +183,23 @@ function startBackend(model) {
   return { ok: true, state: { ...backendState } };
 }
 
-function stopBackend() {
+function restartBackend(model) {
+  if (!backendProcess) {
+    return startBackend(model || backendState.model || 'custom1');
+  }
+
+  pendingRestartModel = model || backendState.model || 'custom1';
+  backendState.status = 'restarting';
+  sendStatus();
+  emitLog(`Restarting AirPointer backend with model=${pendingRestartModel}...`, 'stdout');
+  return stopBackend({ keepRestartModel: true });
+}
+
+function stopBackend(options = {}) {
+  if (!options.keepRestartModel) {
+    pendingRestartModel = null;
+  }
+
   if (!backendProcess) {
     backendState.running = false;
     backendState.pid = null;
@@ -174,10 +213,13 @@ function stopBackend() {
   backendState.status = 'stopping';
   backendState.controlPort = controlPort;
   sendStatus();
-  backendProcess.kill('SIGINT');
+  const processToStop = backendProcess;
+  processToStop.kill('SIGINT');
 
   setTimeout(() => {
-    if (backendProcess) {
+    // Only force-kill if the same process is still active.
+    // Prevents killing a newly restarted backend process.
+    if (backendProcess && backendProcess === processToStop) {
       backendProcess.kill('SIGKILL');
     }
   }, 2500);
@@ -186,6 +228,7 @@ function stopBackend() {
 }
 
 ipcMain.handle('backend:start', (_event, payload) => startBackend(payload?.model || 'custom1'));
+ipcMain.handle('backend:restart', (_event, payload) => restartBackend(payload?.model || 'custom1'));
 ipcMain.handle('backend:stop', () => stopBackend());
 ipcMain.handle('backend:status', () => ({ ...backendState }));
 ipcMain.handle('app:quit', () => {
@@ -210,6 +253,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  pendingRestartModel = null;
   if (backendProcess) {
     backendProcess.kill('SIGINT');
   }
