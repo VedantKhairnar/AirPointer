@@ -10,6 +10,12 @@ def _temporal(pinched: bool, pinch_duration: float) -> TemporalFeatures:
         thumb_index_distance=0.34,
         finger_motion_magnitude=0.0,
         finger_consistency=1.0,
+        finger_spread=0.20,
+        thumb_extended=True,
+        index_extended=True,
+        middle_extended=True,
+        ring_extended=True,
+        pinky_extended=True,
         is_moving=True,
         is_stable=True,
         is_transitioning=False,
@@ -99,3 +105,21 @@ def test_drag_start_update_end_flow():
     state3 = manager.update(release, 1.2)
     assert state3.current_state == InteractionState.IDLE
     assert state3.pending_action == "drag_end"
+
+
+def test_open_hand_triggers_recent_apps():
+    manager = StateManager()
+
+    open_hand = _temporal(pinched=False, pinch_duration=0.0)
+    open_hand.palm_velocity_trend = 0.0
+    open_hand.is_moving = False
+    open_hand.palm_stability_trend = 0.95
+    open_hand.finger_spread = 0.22
+
+    first = manager.update(open_hand, 1.0)
+    assert first.current_state == InteractionState.RECENT_APPS
+    assert first.pending_action == "none"
+
+    second = manager.update(open_hand, 1.25)
+    assert second.current_state == InteractionState.RECENT_APPS
+    assert second.pending_action == "open_recent_apps"

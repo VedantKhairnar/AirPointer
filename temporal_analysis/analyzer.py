@@ -20,6 +20,12 @@ class TemporalFeatures:
     is_pinched: bool
     pinch_duration: float
     confidence: float
+    finger_spread: float = 0.0
+    thumb_extended: bool = False
+    index_extended: bool = False
+    middle_extended: bool = False
+    ring_extended: bool = False
+    pinky_extended: bool = False
 
 
 class TemporalAnalyzer:
@@ -88,6 +94,12 @@ class TemporalAnalyzer:
             thumb_index_distance=float(features.thumb_index_distance),
             finger_motion_magnitude=finger_motion,
             finger_consistency=finger_consistency,
+            finger_spread=float(features.finger_spread),
+            thumb_extended=bool(features.thumb_extended),
+            index_extended=bool(features.index_extended),
+            middle_extended=bool(features.middle_extended),
+            ring_extended=bool(features.ring_extended),
+            pinky_extended=bool(features.pinky_extended),
             is_moving=is_moving,
             is_stable=is_stable,
             is_transitioning=is_transitioning,

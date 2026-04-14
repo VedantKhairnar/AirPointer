@@ -110,6 +110,12 @@ class ActionExecutor:
         except Exception:
             return
 
+    def execute_open_recent_apps(self):
+        try:
+            pyautogui.hotkey("command", "tab")
+        except Exception:
+            return
+
     def start_drag(self, hand_features):
         if self._dragging:
             return

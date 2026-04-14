@@ -56,8 +56,8 @@ class FeatureExtractor:
         thumb_extended = self._is_thumb_extended(landmarks)
 
         thumb_tip = landmarks[4]
-        index_tip = landmarks[8]
-        pinch_dist_raw = float(np.linalg.norm(thumb_tip[:3] - index_tip[:3]))
+        index_base = landmarks[5]
+        pinch_dist_raw = float(np.linalg.norm(thumb_tip[:3] - index_base[:3]))
         thumb_index_distance = pinch_dist_raw / 0.3
 
         fingertip_indices = [8, 12, 16, 20]

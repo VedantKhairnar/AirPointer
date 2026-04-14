@@ -322,6 +322,13 @@ class AirPointerSystem:
                 self.executor.execute_move(hand_features)
             if (
                 can_act
+                and state.current_state == InteractionState.RECENT_APPS
+                and state.pending_action == "open_recent_apps"
+            ):
+                self.executor.execute_open_recent_apps()
+                self.state_manager.enter_cooldown(timestamp)
+            if (
+                can_act
                 and
                 state.current_state == InteractionState.CLICK_ENGAGED
                 and state.pending_action == "click"

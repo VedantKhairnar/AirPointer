@@ -9,6 +9,7 @@ class InteractionState(Enum):
     MOVE = auto()
     CLICK_ENGAGED = auto()
     DRAG = auto()
+    RECENT_APPS = auto()
     SCROLL = auto()
     COOLDOWN = auto()
 
@@ -33,6 +34,7 @@ class StateManager:
         self._click_latched = False
         self._move_latched = False
         self._drag_active = False
+        self._recent_apps_latched = False
         self._move_start_threshold = 0.008
         self._move_stop_threshold = 0.0055
         self._move_stop_threshold_snappy = 0.0062
@@ -43,6 +45,9 @@ class StateManager:
 
         if not temporal_features.is_pinched:
             self._click_latched = False
+
+        if not self._is_recent_apps_gesture(temporal_features):
+            self._recent_apps_latched = False
 
         if self.current_state == InteractionState.COOLDOWN:
             if timestamp < self.cooldown_until:
@@ -65,6 +70,16 @@ class StateManager:
             else:
                 self.pending_action = "drag_update"
             return self._build_state_info(timestamp)
+
+        if self._is_recent_apps_gesture(temporal_features):
+            self._transition(InteractionState.RECENT_APPS, timestamp)
+            state_info = self._build_state_info(timestamp)
+            if not self._recent_apps_latched and state_info.state_duration >= config.RECENT_APPS_HOLD_TIME:
+                self.pending_action = "open_recent_apps"
+                self.last_action = "open_recent_apps"
+                self._recent_apps_latched = True
+                state_info.pending_action = "open_recent_apps"
+            return state_info
 
         if self._is_click_gesture(temporal_features):
             self._transition(InteractionState.CLICK_ENGAGED, timestamp)
@@ -95,9 +110,23 @@ class StateManager:
         self._click_latched = False
         self._move_latched = False
         self._drag_active = False
+        self._recent_apps_latched = False
 
     def _is_click_gesture(self, temporal_features) -> bool:
         return bool(temporal_features.is_pinched and temporal_features.palm_stability_trend > 0.6)
+
+    def _is_recent_apps_gesture(self, temporal_features) -> bool:
+        return bool(
+            not temporal_features.is_pinched
+            and not temporal_features.is_moving
+            and temporal_features.palm_stability_trend >= config.RECENT_APPS_STABILITY_THRESHOLD
+            and temporal_features.finger_spread >= config.RECENT_APPS_SPREAD_THRESHOLD
+            and temporal_features.thumb_extended
+            and temporal_features.index_extended
+            and temporal_features.middle_extended
+            and temporal_features.ring_extended
+            and temporal_features.pinky_extended
+        )
 
     def _is_move_gesture(self, temporal_features) -> bool:
         if temporal_features.is_pinched:
