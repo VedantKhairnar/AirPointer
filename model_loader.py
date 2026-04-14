@@ -69,26 +69,18 @@ class AirPointerKeypointNet(nn.Module):
         self.backbone = mobilenet_v3_small(weights=None).features
         self.decoder = nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(576, 128, kernel_size=3, padding=1, bias=True),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(p=0.1),
-            nn.Conv2d(128, 64, kernel_size=3, padding=1, bias=True),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(p=0.1),
-            nn.Conv2d(64, 21, kernel_size=1, bias=True),
+            nn.Conv2d(576, 128, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(128), nn.ReLU(inplace=True), nn.Dropout2d(p=0.1),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(64), nn.ReLU(inplace=True), nn.Dropout2d(p=0.1),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(64, 21, kernel_size=1),
         )
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        feats = self.backbone(x)
-        # Manually upsample since decoder doesn't have intermediate upsamples
-        x = nn.functional.interpolate(feats, scale_factor=2, mode="bilinear", align_corners=False)
-        x = self.decoder(x)
-        # Final upsampling to 56x56
-        x = nn.functional.interpolate(x, size=(56, 56), mode="bilinear", align_corners=False)
-        return self.sigmoid(x)
+        return self.sigmoid(self.decoder(self.backbone(x)))
 
 
 def initialize_models(config_path: str) -> Tuple[Dict[str, Any], torch.device]:

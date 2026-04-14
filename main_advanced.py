@@ -72,6 +72,9 @@ class AirPointerSystem:
         self._landmark_alpha = 0.35
         self._missed_frames = 0
         self._max_missed_frames = 4
+        self._custom1_frame_index = 0
+        self._custom1_last_bbox = None
+        self._custom1_force_stage_one = False
         self.preview_server = None
         self.control_server = None
         self.control_port = int(os.environ.get("AIRPOINTER_CONTROL_PORT", "8766"))
@@ -223,6 +226,7 @@ class AirPointerSystem:
 
     def _process_custom1(self, frame):
         timestamp = time.time()
+        self._custom1_frame_index += 1
 
         frame_out, metadata = process_frame(
             frame,
@@ -231,12 +235,18 @@ class AirPointerSystem:
             return_metadata=True,
             detection_threshold=config.CUSTOM_STAGE_ONE_SCORE_THRESHOLD,
             keypoint_peak_threshold=config.CUSTOM_STAGE_TWO_HEATMAP_PEAK_THRESHOLD,
+            frame_index=self._custom1_frame_index,
+            detect_interval=config.CUSTOM_STAGE_ONE_INTERVAL,
+            last_bbox=self._custom1_last_bbox,
+            force_stage_one=self._custom1_force_stage_one,
         )
 
         detected = metadata.get("detected", False)
         keypoints = metadata.get("keypoints") or []
         score = metadata.get("score")
         mean_peak_score = metadata.get("mean_peak_score")
+        bbox = metadata.get("bbox")
+        self._custom1_force_stage_one = bool(metadata.get("request_stage_one_next", False))
 
         # Custom ghost pattern observed in logs: moderate stage-one score with weak stage-two peaks.
         if (
@@ -250,6 +260,8 @@ class AirPointerSystem:
             keypoints = []
 
         if detected and len(keypoints) >= 21:
+            if bbox is not None:
+                self._custom1_last_bbox = np.array(bbox, dtype=np.float32)
             self._missed_frames = 0
             if not self._hand_visible:
                 self._hand_visible = True
@@ -335,6 +347,9 @@ class AirPointerSystem:
         self._warmup_frames_remaining = 0
         self._landmark_ema = None
         self._missed_frames = 0
+        self._custom1_last_bbox = None
+        self._custom1_frame_index = 0
+        self._custom1_force_stage_one = False
 
     def _smooth_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
         if self._landmark_ema is None:
